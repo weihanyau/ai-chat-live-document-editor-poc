@@ -299,9 +299,11 @@ app.get('/health', (req, res) => {
 });
 
 // Start server
-server.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
-  console.log(`📡 WebSocket server ready for connections`);
+  console.log(`� Mobile access: http://192.168.100.175:${PORT}`);
+  console.log(`�📡 WebSocket server ready for connections`);
+  console.log(`🔌 WebSocket URL: ws://192.168.100.175:${PORT}`);
   
   if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
     console.warn('⚠️  GOOGLE_GENERATIVE_AI_API_KEY not found. Please set it in your .env file');

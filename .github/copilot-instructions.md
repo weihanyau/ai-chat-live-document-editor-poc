@@ -9,12 +9,21 @@ This is a Node.js web application that combines AI-powered chat with real-time d
 - **AI Integration**: Vercel AI SDK with Google Gemini
 - **Real-time Communication**: WebSockets for document collaboration, HTTP streaming for chat
 - **Frontend**: Vanilla HTML/CSS/JavaScript with document editor and chat interface
+- **Mobile**: React Native with Expo with WebSocket for real-time connectivity
 
 ## Key Features
 - Streaming AI chat responses using Google Gemini via HTTP
 - Real-time document editing with AI commentary via WebSocket
 - WebSocket-based document collaboration
 - AI-assisted document editing capabilities
+- Cross-platform mobile support with native UI components
+
+## Mobile Implementation
+- **Framework**: React Native with Expo
+- **AI Integration**: @ai-sdk/react for streaming UI components
+- **Real-time**: WebSocket client for document synchronization
+- **UI Components**: Native mobile components with responsive design
+- **State Management**: React hooks and context for real-time updates
 
 ## Development Guidelines
 - Use modern JavaScript (ES6+) features
