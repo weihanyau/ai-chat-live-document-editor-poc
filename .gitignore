@@ -1,0 +1,7 @@
+# AI Chat and Docs Review POC
+
+node_modules/
+.env
+*.log
+.DS_Store
+.vscode/settings.json
