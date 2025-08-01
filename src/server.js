@@ -12,14 +12,14 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Configure Google Gemini
-const gemini = google('models/gemini-1.5-pro', {
-  apiKey: process.env.GOOGLE_GEMINI_API_KEY,
+const gemini = google('gemini-2.5-flash-lite', {
+  apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
 });
 
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, '..', 'public')));
 
 // Create HTTP server
 const server = http.createServer(app);
@@ -51,10 +51,6 @@ wss.on('connection', (ws) => {
       const data = JSON.parse(message);
       
       switch (data.type) {
-        case 'chat-message':
-          await handleChatMessage(ws, data);
-          break;
-          
         case 'document-update':
           handleDocumentUpdate(ws, data, connectionId);
           break;
@@ -86,67 +82,7 @@ wss.on('connection', (ws) => {
   });
 });
 
-// Handle chat messages with AI streaming
-async function handleChatMessage(ws, data) {
-  try {
-    const { message, conversationHistory = [] } = data;
-    
-    // Build conversation context
-    const messages = [
-      {
-        role: 'system',
-        content: `You are an AI assistant that helps with document editing and general chat. 
-        Current document content: ${documentContent || 'No document content yet.'}
-        
-        Provide helpful responses and when discussing document edits, be specific about suggestions.`
-      },
-      ...conversationHistory,
-      {
-        role: 'user',
-        content: message
-      }
-    ];
-    
-    // Stream the AI response
-    const result = await streamText({
-      model: gemini,
-      messages,
-      temperature: 0.7,
-    });
-    
-    // Send streaming start indicator
-    ws.send(JSON.stringify({
-      type: 'chat-stream-start',
-      timestamp: Date.now()
-    }));
-    
-    let fullResponse = '';
-    
-    // Stream chunks to client
-    for await (const chunk of result.textStream) {
-      fullResponse += chunk;
-      ws.send(JSON.stringify({
-        type: 'chat-stream-chunk',
-        chunk,
-        timestamp: Date.now()
-      }));
-    }
-    
-    // Send completion indicator
-    ws.send(JSON.stringify({
-      type: 'chat-stream-complete',
-      fullResponse,
-      timestamp: Date.now()
-    }));
-    
-  } catch (error) {
-    console.error('Error in chat handling:', error);
-    ws.send(JSON.stringify({
-      type: 'chat-error',
-      message: 'Failed to process chat message'
-    }));
-  }
-}
+// HTTP Chat endpoint with streaming
 
 // Handle document updates and broadcast to other clients
 function handleDocumentUpdate(ws, data, senderId) {
@@ -294,7 +230,64 @@ async function handleAIDocumentEdit(ws, data) {
 
 // REST API endpoints
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
+});
+
+// HTTP Chat endpoint with streaming
+app.post('/api/chat', async (req, res) => {
+  try {
+    const { message, conversationHistory = [] } = req.body;
+    
+    if (!message) {
+      return res.status(400).json({ error: 'Message is required' });
+    }
+    
+    // Build conversation context
+    const messages = [
+      {
+        role: 'system',
+        content: `You are an AI assistant that helps with document editing and general chat. 
+        Current document content: ${documentContent || 'No document content yet.'}
+        
+        Provide helpful responses and when discussing document edits, be specific about suggestions.`
+      },
+      ...conversationHistory.slice(-10), // Keep last 10 messages for context
+      {
+        role: 'user',
+        content: message
+      }
+    ];
+    
+    // Set headers for streaming response
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.setHeader('Transfer-Encoding', 'chunked');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    
+    // Stream the AI response
+    const result = await streamText({
+      model: gemini,
+      messages,
+      temperature: 0.7,
+    });
+    
+    let fullResponse = '';
+    
+    // Stream chunks to client
+    for await (const chunk of result.textStream) {
+      fullResponse += chunk;
+      res.write(chunk);
+    }
+    
+    // End the response
+    res.end();
+    
+  } catch (error) {
+    console.error('Error in chat handling:', error);
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Failed to process chat message' });
+    }
+  }
 });
 
 app.get('/health', (req, res) => {
@@ -310,8 +303,8 @@ server.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
   console.log(`📡 WebSocket server ready for connections`);
   
-  if (!process.env.GOOGLE_GEMINI_API_KEY) {
-    console.warn('⚠️  GOOGLE_GEMINI_API_KEY not found. Please set it in your .env file');
+  if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
+    console.warn('⚠️  GOOGLE_GENERATIVE_AI_API_KEY not found. Please set it in your .env file');
   }
 });
 

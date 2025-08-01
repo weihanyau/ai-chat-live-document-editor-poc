@@ -6,6 +6,11 @@ class DocumentChatApp {
         this.conversationHistory = [];
         this.isConnected = false;
         this.currentStreamingMessage = null;
+        this.currentEditMessage = null;
+        this.enableLiveEditPreview = true; // Enabled by default
+        this.originalDocumentContent = null;
+        this.selectedText = null;
+        this.streamedEditContent = '';
         
         this.initializeElements();
         this.setupEventListeners();
@@ -24,6 +29,7 @@ class DocumentChatApp {
         this.editInstruction = document.getElementById('editInstruction');
         this.requestEditBtn = document.getElementById('requestEdit');
         this.typingIndicator = document.getElementById('typingIndicator');
+        this.livePreviewToggle = document.getElementById('livePreviewToggle');
     }
     
     setupEventListeners() {
@@ -59,6 +65,15 @@ class DocumentChatApp {
                 this.requestAIEdit();
             }
         });
+        
+        // Live preview toggle
+        this.livePreviewToggle.addEventListener('change', (e) => {
+            this.enableLiveEditPreview = e.target.checked;
+            console.log('Live preview:', this.enableLiveEditPreview ? 'enabled' : 'disabled');
+        });
+        
+        // Set live preview toggle to checked by default
+        this.livePreviewToggle.checked = this.enableLiveEditPreview;
     }
     
     connect() {
@@ -127,37 +142,21 @@ class DocumentChatApp {
                 }
                 break;
                 
-            case 'chat-stream-start':
-                this.startStreamingMessage();
-                break;
-                
-            case 'chat-stream-chunk':
-                this.appendToStreamingMessage(data.chunk);
-                break;
-                
-            case 'chat-stream-complete':
-                this.completeStreamingMessage(data.fullResponse);
-                break;
-                
-            case 'chat-error':
-                this.addMessage('assistant', 'Sorry, I encountered an error processing your message.');
-                this.hideTypingIndicator();
-                break;
-                
             case 'ai-commentary':
                 this.showAICommentary(data.commentary);
                 break;
                 
             case 'ai-edit-stream-start':
                 this.showTypingIndicator();
+                this.startAIEditStreaming();
                 break;
                 
             case 'ai-edit-stream-chunk':
-                // Could show live editing progress here
+                this.handleAIEditChunk(data.chunk);
                 break;
                 
             case 'ai-edit-stream-complete':
-                this.handleAIEditComplete(data.editedContent);
+                this.completeAIEditStreaming(data.editedContent);
                 this.hideTypingIndicator();
                 break;
                 
@@ -190,9 +189,9 @@ class DocumentChatApp {
         });
     }
     
-    sendChatMessage() {
+    async sendChatMessage() {
         const message = this.chatInput.value.trim();
-        if (!message || !this.isConnected) return;
+        if (!message) return;
         
         // Add user message to chat
         this.addMessage('user', message);
@@ -201,15 +200,62 @@ class DocumentChatApp {
         // Clear input
         this.chatInput.value = '';
         
-        // Show typing indicator
+        // Show typing indicator and start streaming message
         this.showTypingIndicator();
+        this.currentStreamingMessage = this.addMessage('assistant', '', true);
         
-        // Send to server
-        this.sendWebSocketMessage({
-            type: 'chat-message',
-            message,
-            conversationHistory: this.conversationHistory.slice(-10) // Keep last 10 messages
-        });
+        try {
+            // Send HTTP request with streaming
+            const response = await fetch('/api/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    message,
+                    conversationHistory: this.conversationHistory.slice(-10)
+                })
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            // Read the stream
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let fullResponse = '';
+            
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                
+                const chunk = decoder.decode(value, { stream: true });
+                fullResponse += chunk;
+                
+                // Update the streaming message
+                if (this.currentStreamingMessage) {
+                    const contentSpan = this.currentStreamingMessage.querySelector('.content');
+                    if (contentSpan) {
+                        contentSpan.textContent = fullResponse;
+                        this.scrollChatToBottom();
+                    }
+                }
+            }
+            
+            // Complete the streaming message
+            if (this.currentStreamingMessage) {
+                this.currentStreamingMessage.classList.remove('streaming');
+                this.conversationHistory.push({ role: 'assistant', content: fullResponse });
+            }
+            
+        } catch (error) {
+            console.error('Error sending chat message:', error);
+            this.addMessage('assistant', 'Sorry, I encountered an error processing your message.');
+        } finally {
+            this.hideTypingIndicator();
+            this.currentStreamingMessage = null;
+        }
     }
     
     requestAIEdit() {
@@ -241,51 +287,79 @@ class DocumentChatApp {
         return this.documentEditor.value.substring(start, end);
     }
     
-    handleAIEditComplete(editedContent) {
-        const selectedText = this.getSelectedText();
+    startAIEditStreaming() {
+        // Store the original document state for streaming
+        this.originalDocumentContent = this.documentEditor.value;
+        this.selectedText = this.getSelectedText();
+        this.selectionStart = this.documentEditor.selectionStart;
+        this.selectionEnd = this.documentEditor.selectionEnd;
+        this.streamedEditContent = '';
         
-        if (selectedText) {
+        // Create a preview message for the streaming edit
+        this.currentEditMessage = this.addMessage('assistant', '🔄 Streaming edit...', true);
+    }
+    
+    handleAIEditChunk(chunk) {
+        this.streamedEditContent += chunk;
+        
+        // Update the preview message with current content
+        if (this.currentEditMessage) {
+            const contentSpan = this.currentEditMessage.querySelector('.content');
+            if (contentSpan) {
+                contentSpan.textContent = `🔄 Streaming edit: "${this.streamedEditContent.substring(0, 100)}${this.streamedEditContent.length > 100 ? '...' : ''}"`;
+            }
+        }
+        
+        // Optionally show live preview in document (can be toggled)
+        if (this.enableLiveEditPreview) {
+            this.showLiveEditPreview();
+        }
+    }
+    
+    showLiveEditPreview() {
+        if (this.selectedText) {
+            // Replace selected text with streamed content
+            const currentValue = this.originalDocumentContent;
+            const previewContent = currentValue.substring(0, this.selectionStart) + 
+                                 this.streamedEditContent + 
+                                 currentValue.substring(this.selectionEnd);
+            this.documentEditor.value = previewContent;
+        } else {
+            // Replace entire document
+            this.documentEditor.value = this.streamedEditContent;
+        }
+    }
+    
+    completeAIEditStreaming(editedContent) {
+        // Apply the final edited content
+        if (this.selectedText) {
             // Replace selected text
-            const start = this.documentEditor.selectionStart;
-            const end = this.documentEditor.selectionEnd;
-            const currentValue = this.documentEditor.value;
-            
-            this.documentEditor.value = currentValue.substring(0, start) + 
+            const currentValue = this.originalDocumentContent;
+            this.documentEditor.value = currentValue.substring(0, this.selectionStart) + 
                                        editedContent + 
-                                       currentValue.substring(end);
+                                       currentValue.substring(this.selectionEnd);
         } else {
             // Replace entire document
             this.documentEditor.value = editedContent;
         }
         
-        // Trigger document update
-        this.handleDocumentChange();
-        
-        this.addMessage('assistant', '✅ Document edited successfully!');
-    }
-    
-    startStreamingMessage() {
-        this.hideTypingIndicator();
-        this.currentStreamingMessage = this.addMessage('assistant', '', true);
-    }
-    
-    appendToStreamingMessage(chunk) {
-        if (this.currentStreamingMessage) {
-            const contentSpan = this.currentStreamingMessage.querySelector('.content');
+        // Update the message to show completion
+        if (this.currentEditMessage) {
+            this.currentEditMessage.classList.remove('streaming');
+            const contentSpan = this.currentEditMessage.querySelector('.content');
             if (contentSpan) {
-                contentSpan.textContent += chunk;
-                this.scrollChatToBottom();
+                contentSpan.textContent = '✅ Document edited successfully!';
             }
         }
-    }
-    
-    completeStreamingMessage(fullResponse) {
-        if (this.currentStreamingMessage) {
-            this.currentStreamingMessage.classList.remove('streaming');
-            this.conversationHistory.push({ role: 'assistant', content: fullResponse });
-        }
-        this.currentStreamingMessage = null;
-        this.hideTypingIndicator();
+        
+        // Trigger document update via WebSocket
+        this.handleDocumentChange();
+        
+        // Clean up
+        this.currentEditMessage = null;
+        this.originalDocumentContent = null;
+        this.selectedText = null;
+        this.streamedEditContent = '';
     }
     
     addMessage(sender, content, isStreaming = false) {

@@ -7,13 +7,13 @@ This is a Node.js web application that combines AI-powered chat with real-time d
 ## Project Architecture
 - **Backend**: Express.js server with WebSocket support
 - **AI Integration**: Vercel AI SDK with Google Gemini
-- **Real-time Communication**: WebSockets for document collaboration and AI streaming
+- **Real-time Communication**: WebSockets for document collaboration, HTTP streaming for chat
 - **Frontend**: Vanilla HTML/CSS/JavaScript with document editor and chat interface
 
 ## Key Features
-- Streaming AI chat responses using Google Gemini
-- Real-time document editing with AI commentary
-- WebSocket-based bidirectional communication
+- Streaming AI chat responses using Google Gemini via HTTP
+- Real-time document editing with AI commentary via WebSocket
+- WebSocket-based document collaboration
 - AI-assisted document editing capabilities
 
 ## Development Guidelines
@@ -22,3 +22,6 @@ This is a Node.js web application that combines AI-powered chat with real-time d
 - Ensure WebSocket connections are robust with reconnection logic
 - Follow RESTful API conventions for HTTP endpoints
 - Use environment variables for sensitive configuration
+- For chat, use normal http request and response streaming instead of WebSocket for simplicity
+- For document editing, use WebSocket for real-time updates
+- For document editing, use WebSocket for real-time updates

@@ -236,6 +236,19 @@
         .typing-indicator.show {
             display: block;
         }
+
+        .preview-toggle {
+            display: flex;
+            align-items: center;
+            font-size: 13px;
+            color: #6c757d;
+            margin-left: 0.5rem;
+            cursor: pointer;
+        }
+
+        .preview-toggle input[type="checkbox"] {
+            margin-right: 0.25rem;
+        }
     </style>
 </head>
 <body>
@@ -251,6 +264,9 @@
                 <div class="edit-controls">
                     <input type="text" class="edit-instruction" placeholder="Ask AI to edit document..." id="editInstruction">
                     <button class="btn btn-secondary" id="requestEdit">Edit with AI</button>
+                    <label class="preview-toggle" style="display: none;">
+                        <input type="checkbox" id="livePreviewToggle"> Live Preview
+                    </label>
                 </div>
                 <div class="connection-status" id="connectionStatus">Connecting...</div>
             </div>
