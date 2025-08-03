@@ -2,6 +2,10 @@
 
 A demonstration of how to evolve from traditional HTTP-based chat streaming to a hybrid architecture that incorporates WebSocket functionalities for real-time collaboration. This full-stack application showcases AI-powered chat using HTTP streaming alongside real-time document editing via WebSockets, built with Google Gemini and Vercel AI SDK.
 
+## 🎬 Demo
+
+See the application in action: [demo.mp4](demo.mp4)
+
 ## Architecture Overview
 
 This project demonstrates two distinct communication patterns for AI interaction:
