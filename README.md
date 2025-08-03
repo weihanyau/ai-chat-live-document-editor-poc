@@ -1,25 +1,24 @@
 # AI Chat & Document Editor POC
 
-A full-stack application with web and mobile clients that provides AI-powered chat and real-time document editing capabilities using Google Gemini and Vercel AI SDK.
+A demonstration of how to evolve from traditional HTTP-based chat streaming to a hybrid architecture that incorporates WebSocket functionalities for real-time collaboration. This full-stack application showcases AI-powered chat using HTTP streaming alongside real-time document editing via WebSockets, built with Google Gemini and Vercel AI SDK.
 
-## Features
+## Architecture Overview
 
-🤖 **AI-Powered Chat**: Stream responses from Google Gemini for document assistance and general queries  
-📝 **Real-time Document Editing**: Collaborative document editing with live synchronization  
-💡 **AI Commentary**: Get automatic AI feedback while writing  
-✨ **AI Document Editing**: Ask AI to edit your document with specific instructions  
-📱 **Cross-Platform**: Web (HTML/CSS/JS) and Mobile (React Native with Expo)  
-🔄 **Hybrid Architecture**: HTTP streaming for chat, WebSocket for document sync  
-🔄 **WebSocket Communication**: Real-time bidirectional communication for instant updates  
-📱 **Responsive Design**: Clean, modern interface that works on different screen sizes  
+This project demonstrates two distinct communication patterns for AI interaction:
 
-## Technology Stack
+### 🔄 **HTTP Streaming for Chat** 
+Traditional request-response pattern with streaming capabilities:
+- Client sends POST request to `/api/chat` endpoint
+- Server streams AI responses chunk by chunk
+- Real-time typing indicators and message updates
+- Conversation history maintained on client side
 
-- **Backend**: Node.js with Express.js
-- **AI Integration**: Vercel AI SDK with Google Gemini
-- **Real-time Communication**: WebSockets (ws library)
-- **Frontend**: Vanilla HTML, CSS, and JavaScript
-- **Environment**: dotenv for configuration
+### 🔗 **WebSocket for Real-time Document Collaboration**
+Bidirectional real-time communication for collaborative features:
+- **Document Synchronization**: Live updates across multiple clients
+- **AI Commentary**: Automatic feedback triggered by document changes (2-second delay)
+- **AI Document Editing**: Streaming AI edits with live preview capabilities
+- **Connection Management**: Automatic reconnection and status indicators
 
 ## Quick Start
 
@@ -81,49 +80,23 @@ A full-stack application with web and mobile clients that provides AI-powered ch
    npx expo start
    ```
 
-4. **Run on device/simulator:**
+4. **Configure server URLs for mobile development:**
+   
+   Edit `mobile/my-app/config/index.ts` and update the server URLs:
+   
+   ```typescript
+   export const CONFIG = {
+     // For Android devices/emulators - Use your machine's IP address
+     SERVER_URL: 'http://YOUR_MACHINE_IP:3000',
+     WS_URL: 'ws://YOUR_MACHINE_IP:3000',
+     
+     // For iOS simulator, you can use localhost
+     // SERVER_URL: 'http://localhost:3000',
+     // WS_URL: 'ws://localhost:3000',
+   };
+   ```
+
+5. **Run on device/simulator:**
    - Scan QR code with Expo Go app (iOS/Android)
    - Press 'i' for iOS simulator
    - Press 'a' for Android emulator
-
-## Usage
-
-### Web Client
-
-#### Document Editing
-- Type in the document editor to start writing
-- Your changes are synchronized in real-time
-- AI will provide automatic commentary on your writing
-
-#### Chat with AI
-- Use the chat panel to ask questions about your document
-- Get writing suggestions and general assistance
-- All responses are streamed in real-time
-
-#### AI Document Editing
-- Select text in the document or leave it unselected for full document editing
-- Enter editing instructions in the "Ask AI to edit document..." field
-- Click "Edit with AI" to have the AI modify your document
-
-### Mobile Client
-
-The mobile app provides all the same functionality as the web client with native mobile UX:
-
-#### Document Editing
-- Touch-optimized text editing with real-time sync
-- Connection status indicator
-- Auto-saving changes via WebSocket
-
-#### Chat Interface
-- Native chat UI with streaming responses
-- Conversation history
-- Send button and message composition
-
-#### AI Document Enhancement
-- AI edit requests with live preview
-- Streaming edit suggestions
-- Full document or selection-based editing
-
-### WebSocket Features
-- Real-time document synchronization across multiple clients
-- Live AI commentary and suggestions
