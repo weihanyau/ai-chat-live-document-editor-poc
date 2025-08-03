@@ -4,7 +4,9 @@ A demonstration of how to evolve from traditional HTTP-based chat streaming to a
 
 ## 🎬 Demo
 
-See the application in action: [demo.mp4](demo.mp4)
+![Demo](demo.gif)
+
+*See the full video: [demo.mp4](demo.mp4)*
 
 ## Architecture Overview
 
